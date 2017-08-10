@@ -21,7 +21,6 @@ package org.sonar.java.bytecode.se;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.util.Printer;
 import org.sonar.java.bytecode.cfg.BytecodeCFGBuilder;
 import org.sonar.java.bytecode.loader.SquidClassLoader;
 import org.sonar.java.se.ExplodedGraph;
@@ -78,7 +77,6 @@ public class BytecodeEGWalker {
     endOfExecutionPath = new LinkedHashSet<>();
     steps = 0;
     BytecodeCFGBuilder.BytecodeCFG bytecodeCFG = BytecodeCFGBuilder.buildCFG(symbol, classLoader);
-    bytecodeCFG.blocks.forEach(b -> System.out.println(b.printBlock()));
     for (ProgramState startingState : startingStates(symbol, programState)) {
       enqueue(new ProgramPoint(bytecodeCFG.entry()), startingState);
     }
@@ -113,7 +111,6 @@ public class BytecodeEGWalker {
   }
 
   private void executeInstruction(BytecodeCFGBuilder.Instruction instruction) {
-    System.out.println("instruc "+instruction.opcode+"  "+ Printer.OPCODES[instruction.opcode]);
     // TODO execute check prestatement
     switch (instruction.opcode) {
       case Opcodes.ACONST_NULL:
