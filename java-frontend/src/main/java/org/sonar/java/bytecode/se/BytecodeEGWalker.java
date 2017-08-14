@@ -63,6 +63,7 @@ public class BytecodeEGWalker {
   BytecodeEGWalker(BehaviorCache behaviorCache){
     this.behaviorCache = behaviorCache;
     checkerDispatcher = new CheckerDispatcher(this, Lists.newArrayList(new BytecodeSECheck.NullnessCheck()));
+    constraintManager = new ConstraintManager();
   }
 
   public MethodBehavior getMethodBehavior(Symbol.MethodSymbol symbol, SquidClassLoader classLoader) {
@@ -76,7 +77,6 @@ public class BytecodeEGWalker {
 
   private void execute(Symbol.MethodSymbol symbol, SquidClassLoader classLoader) {
     explodedGraph = new ExplodedGraph();
-    constraintManager = new ConstraintManager();
     programState = ProgramState.EMPTY_STATE;
     workList = new LinkedList<>();
     endOfExecutionPath = new LinkedHashSet<>();
@@ -99,7 +99,11 @@ public class BytecodeEGWalker {
 
       if (programPosition.i < programPosition.block.elements().size()) {
         // process block element
-        executeInstruction((BytecodeCFGBuilder.Instruction) programPosition.block.elements().get(programPosition.i));
+        BytecodeCFGBuilder.Instruction instruction = (BytecodeCFGBuilder.Instruction) programPosition.block.elements().get(programPosition.i);
+        if (checkerDispatcher.executeCheckPreStatement(instruction)) {
+          executeInstruction(instruction);
+          checkerDispatcher.executeCheckPostStatement(instruction);
+        }
       } else {
         // process block exit, which is unconditional jump such as goto-statement or return-statement
         handleBlockExit(programPosition);
@@ -115,10 +119,8 @@ public class BytecodeEGWalker {
     constraintManager = null;
   }
 
-  private void executeInstruction(BytecodeCFGBuilder.Instruction instruction) {
-    if(!checkerDispatcher.executeCheckPreStatement(instruction)) {
-      return;
-    }
+  @VisibleForTesting
+  void executeInstruction(BytecodeCFGBuilder.Instruction instruction) {
     switch (instruction.opcode) {
       case Opcodes.ARETURN:
         programState.storeExitValue();
@@ -150,7 +152,6 @@ public class BytecodeEGWalker {
       default:
         // do nothing
     }
-    checkerDispatcher.executeCheckPostStatement(instruction);
   }
 
   private void handleBlockExit(ProgramPoint programPosition) {
